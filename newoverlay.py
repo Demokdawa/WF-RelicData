@@ -34,8 +34,10 @@ class MainWindow(QMainWindow):
         label4.move(1211, 411)
 
 
-def show_overlay(rel_values):
+def show_overlay():
     app = QApplication(sys.argv)
     mywindow = MainWindow('tamer')
     mywindow.show()
     app.exec_()
+
+show_overlay()
