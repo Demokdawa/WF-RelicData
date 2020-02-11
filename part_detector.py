@@ -6,7 +6,11 @@ from os import path
 import sqlite3
 import unidecode
 from pynput import keyboard
-from newoverlay import *
+from PyQt5 import QtGui, QtCore, uic
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QMainWindow, QApplication, QLabel
+import sys
+import time
 
 basepath = path.dirname(__file__)
 tessdata_path = basepath + '/tessdata'
@@ -100,14 +104,14 @@ def data_pass_name(pos1, pos2, pos3, pos4):
     return textocr
 
 
-def main_script():
+def recognize():
     rel_values = []
     for i in pos_list:
         result = data_pass_name(i[1], i[3], i[0], i[2])
         print(normalize_names(result))
         plats, ducats = get_data_from_db(normalize_names(result))
         rel_values.append((plats, ducats, i[0], i[1]))
-    show_overlay(rel_values)
+    return rel_values
 
 
 def on_press(key):
@@ -122,12 +126,52 @@ def on_press(key):
 def on_release(key):
     # print('{0} released'.format(key))
     if key == keyboard.Key.f11:
-        main_script()
+        data = recognize()
+        show_overlay()
     elif key == keyboard.Key.esc:
         # Stop listener
         return False
 
 
+class MainWindow(QMainWindow):
+    def __init__(self, plats):
+        QMainWindow.__init__(self)
+        self.left = 0
+        self.top = 0
+        self.width = 1920
+        self.height = 1080
+        self.plats = plats
+        self.setWindowFlags(
+            QtCore.Qt.WindowStaysOnTopHint |
+            QtCore.Qt.FramelessWindowHint |
+            QtCore.Qt.X11BypassWindowManagerHint
+                            )
+        self.setGeometry(self.left, self.top, self.width, self.height)
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        label = QLabel('yes', self)
+        label.move(483, 411)
+
+        label2 = QLabel('yes', self)
+        label2.move(725, 411)
+
+        label3 = QLabel('yes', self)
+        label3.move(968, 411)
+
+        label4 = QLabel('yes', self)
+        label4.move(1211, 411)
+
+
+def show_overlay():
+    app = QApplication(sys.argv)
+    mywindow = MainWindow('tamer')
+    mywindow.show()
+    time.sleep(10)
+    mywindow.close()
+    app.exec_()
+
 # Collect events until released
 with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
     listener.join()
+
+show_overlay()
