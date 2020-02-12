@@ -23,6 +23,8 @@ tessdata_path = basepath + '/tessdata'
 language = 'FR'
 file = 'ref_fr.txt'
 
+busy = False
+
 pos_list = [(483, 411, 709, 458), (725, 411, 951, 458), (968, 411, 1193, 458), (1211, 411, 1436, 458)]
 
 def parse_language():
@@ -125,17 +127,25 @@ def on_press(key):
         # print('special key {0} pressed'.format(key))
         pass
 
+def execute_things():
+    global busy
+    print('execute ' + busy)
+    princ.hide()
+    busy = False
+    print('triggered')
 
 def on_release(key):
+    global busy
+    print('First ' + busy)
     # print('{0} released'.format(key))
-    if key == keyboard.Key.f12:
+    if busy is False and key == keyboard.Key.f12:
+        busy = True
         princ.update_vals(recognize())
         princ.show()
-        timer = threading.Timer(20, princ.hide)
+        timer = threading.Timer(5, execute_things)
         timer.start()
-    elif key == keyboard.Key.esc:
-        # Stop listener
-        return False
+    if busy is True and key == keyboard.Key.f12:
+        print('false ' + busy)
 
 
 class Fenetre(QtWidgets.QMainWindow):
@@ -151,36 +161,33 @@ class Fenetre(QtWidgets.QMainWindow):
             QtCore.Qt.CustomizeWindowHint |
             QtCore.Qt.WindowStaysOnTopHint |
             QtCore.Qt.FramelessWindowHint |
-            QtCore.Qt.X11BypassWindowManagerHint
-            # QtCore.Qt.Tool
+            QtCore.Qt.X11BypassWindowManagerHint |
+            QtCore.Qt.Tool
                             )
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
         
+        # Tray Menu Part
         self.icon = QtGui.QIcon("icon.png")
-        
-        def print_msg():
-            print("This action is triggered connect!")
 
-        
         self.tray = QSystemTrayIcon()
         self.tray.setIcon(self.icon)
-        self.tray.show()
-        
         self.menu = QMenu()
         
-        self.action = QAction("This is menu item")
+        self.action = QAction("RelicScanner prêt !")
+        self.action.setFont(QtGui.QFont('Aharoni', 12, weight=QtGui.QFont.Bold))
         self.menu.addAction(self.action)
-        action.triggered.connect(print_msg)
+        self.action.setEnabled(False)
         
-        exitAction = QAction("&Exit")
-        menu.addAction(exitAction)
-        exitAction.triggered.connect(exit)
+        self.exitAction = QAction("&Exit")
+        self.menu.addAction(self.exitAction)
+        self.exitAction.triggered.connect(exit)
         
-        self.tray.setContextMenu(menu)
-    
-        #1
+        self.tray.setContextMenu(self.menu)
+        self.tray.show()
+        
+        # Element 1
         self.img_ducat_1 = QLabel(self)
         self.img_ducat_1.setPixmap(QtGui.QPixmap("ducat.png"))
         self.img_ducat_1.move(453, 230)
@@ -194,7 +201,7 @@ class Fenetre(QtWidgets.QMainWindow):
         self.label_plat_1.move(483, 265)
         self.label_plat_1.setFont(QtGui.QFont('Impact', 14))
 
-        #2
+        # Element 2
         self.img_ducat_2 = QLabel(self)
         self.img_ducat_2.setPixmap(QtGui.QPixmap("ducat.png"))
         self.img_ducat_2.move(695, 230)
@@ -208,7 +215,7 @@ class Fenetre(QtWidgets.QMainWindow):
         self.label_plat_2.move(725, 265)
         self.label_plat_2.setFont(QtGui.QFont('Impact', 14))
 
-        #3
+        # Element 3
         self.img_ducat_3 = QLabel(self)
         self.img_ducat_3.setPixmap(QtGui.QPixmap("ducat.png"))
         self.img_ducat_3.move(938, 230)
@@ -222,7 +229,7 @@ class Fenetre(QtWidgets.QMainWindow):
         self.label_plat_3.move(968, 265)
         self.label_plat_3.setFont(QtGui.QFont('Impact', 14))
 
-        #4
+        # Element 4
         self.img_ducat_4 = QLabel(self)
         self.img_ducat_4.setPixmap(QtGui.QPixmap("ducat.png"))
         self.img_ducat_4.move(1181, 230)
