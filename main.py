@@ -2,8 +2,9 @@ from PyQt5 import QtGui, QtCore, uic
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QApplication, QLabel, QSystemTrayIcon, QMenu, QAction
 from pynput import keyboard
-from os import path
+from sys import argv,exit
 import sys
+import os
 import time
 import threading
 import grpc
@@ -15,13 +16,22 @@ import cv2
 import numpy as np
 import sqlite3
 import unidecode
+from random import randint
+from pathlib import Path
+
+if getattr(sys, 'frozen', False):
+    folder = Path(sys._MEIPASS)
+else:
+    folder = Path(__file__).parent
+    
+pytesseract.pytesseract.tesseract_cmd = os.path.join(str(folder), 'Tesseract-OCR', 'tesseract.exe')
+
+tessdata_path = os.path.join(str(folder), 'tessdata')
 
 grpc_connect = '195.154.173.75:50051'
 
-basepath = path.dirname(__file__)
-tessdata_path = basepath + '/tessdata'
 language = 'FR'
-file = 'ref_fr.txt'
+file = str(folder) + '/ref_fr.txt'
 
 busy = False
 
@@ -41,8 +51,10 @@ def parse_language():
 def create_mask(theme, img):
     if theme == 'Virtuvian':
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        lower_virtu = np.array([-3, 80, 80])
-        upper_virtu = np.array([43, 255, 255])
+        #lower_virtu = np.array([-3, 80, 80])
+        #upper_virtu = np.array([43, 255, 255])
+        lower_virtu = np.array([20, 90, 110])
+        upper_virtu = np.array([43, 135, 255])
         mask = cv2.inRange(hsv, lower_virtu, upper_virtu)
         return mask
     if theme == 'Stalker':
@@ -71,7 +83,6 @@ def create_mask(theme, img):
 def relicarea_crop(upper_y, downer_y, left_x, right_x, img):
     # upperY:downerY, LeftX:RightX
     cropped = img[upper_y:downer_y, left_x:right_x]
-    cv2.imwrite('test.png', cropped)
     return cropped
     
 
@@ -86,32 +97,39 @@ def get_data_from_db(prime_part):
 
 def normalize_names(name):
     dict_test = parse_language()
-    test1 = name.replace('\n', ' ')
-    test2 = dict_test.get(unidecode.unidecode(test1).upper())
-    test3 = test2.title()
-    return test3
+    strip_newlines = name.replace('\n', ' ')
+    translation = dict_test.get(unidecode.unidecode(strip_newlines).upper())
+    if translation is None:
+        return 'Bad'
+    else:
+        translation_format = translation.title()
+        return translation_format
 
-def data_pass_name(pos1, pos2, pos3, pos4):
-    img_file = 'theme_source.png'
+def data_pass_name(pos1, pos2, pos3, pos4, image2):
+    rid = str(randint(100, 999))
+    img_file = str(folder) + '/my_screenshot.png'
     image = cv2.imread(img_file)
     cropped_img = relicarea_crop(pos1, pos2, pos3, pos4, image)
     upscaled = cv2.resize(cropped_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     ret, imgtresh = cv2.threshold(create_mask('Virtuvian', upscaled), 218, 255, cv2.THRESH_BINARY_INV)
-    # tessdata_dir_config = '--tessdata-dir "C:/Users/aprieto/Documents/GitHub/WF-RelicData/tessdata" -l Roboto --oem 1 --psm 6 get.images'
-    tessdata_dir_config = '--tessdata-dir "C:/Users/Demokdawa/Documents/GitHub/WF-RelicData/tessdata" -l Roboto --oem 1 --psm 6 get.images'
+    tessdata_dir_config = '--tessdata-dir "' + tessdata_path + '" -l Roboto --oem 1 --psm 6'
     textocr = pytesseract.image_to_string(imgtresh, config=tessdata_dir_config)
     print('ocr is : ' + textocr)
     return textocr
     
     
 def recognize():
-    #opencvImage = pyautogui.screenshot('my_screenshot.png')
-    #opencvImage = cv2.cvtColor(np.array(pyautogui.screenshot('my_screenshot.png')), cv2.COLOR_RGB2BGR)
+    opencvImage = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
     rel_values = []
     for i in pos_list:
-        result = data_pass_name(i[1], i[3], i[0], i[2])
-        plats, ducats = get_data_from_db(normalize_names(result))
-        rel_values.append((plats, ducats, i[0], i[1]))
+        result = data_pass_name(i[1], i[3], i[0], i[2], opencvImage)
+        norm = normalize_names(result)
+        print(norm)
+        if norm == 'Bad':
+            rel_values.append(('Bad', 'Bad', i[0], i[1]))
+        else:
+            plats, ducats = get_data_from_db(normalize_names(result))
+            rel_values.append((plats, ducats, i[0], i[1]))
     return rel_values
 
 
@@ -170,7 +188,7 @@ class Fenetre(QtWidgets.QMainWindow):
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
         
         # Tray Menu Part
-        self.icon = QtGui.QIcon("icon.png")
+        self.icon = QtGui.QIcon(str(folder) + "/icon.png")
 
         self.tray = QSystemTrayIcon()
         self.tray.setIcon(self.icon)
@@ -190,10 +208,10 @@ class Fenetre(QtWidgets.QMainWindow):
         
         # Element 1
         self.img_ducat_1 = QLabel(self)
-        self.img_ducat_1.setPixmap(QtGui.QPixmap("ducat.png"))
+        self.img_ducat_1.setPixmap(QtGui.QPixmap(str(folder) + "/ducat.png"))
         self.img_ducat_1.move(453, 230)
         self.img_plat_1 = QLabel(self)
-        self.img_plat_1.setPixmap(QtGui.QPixmap("plat.png"))
+        self.img_plat_1.setPixmap(QtGui.QPixmap(str(folder) + "/plat.png"))
         self.img_plat_1.move(453, 265)
         self.label_ducat_1 = QLabel('X', self)
         self.label_ducat_1.move(483, 230)
@@ -204,10 +222,10 @@ class Fenetre(QtWidgets.QMainWindow):
 
         # Element 2
         self.img_ducat_2 = QLabel(self)
-        self.img_ducat_2.setPixmap(QtGui.QPixmap("ducat.png"))
+        self.img_ducat_2.setPixmap(QtGui.QPixmap(str(folder) + "/ducat.png"))
         self.img_ducat_2.move(695, 230)
         self.img_plat_2 = QLabel(self)
-        self.img_plat_2.setPixmap(QtGui.QPixmap("plat.png"))
+        self.img_plat_2.setPixmap(QtGui.QPixmap(str(folder) + "/plat.png"))
         self.img_plat_2.move(695, 265)
         self.label_ducat_2 = QLabel('X', self)
         self.label_ducat_2.move(725, 230)
@@ -218,10 +236,10 @@ class Fenetre(QtWidgets.QMainWindow):
 
         # Element 3
         self.img_ducat_3 = QLabel(self)
-        self.img_ducat_3.setPixmap(QtGui.QPixmap("ducat.png"))
+        self.img_ducat_3.setPixmap(QtGui.QPixmap(str(folder) + "/ducat.png"))
         self.img_ducat_3.move(938, 230)
         self.img_plat_3 = QLabel(self)
-        self.img_plat_3.setPixmap(QtGui.QPixmap("plat.png"))
+        self.img_plat_3.setPixmap(QtGui.QPixmap(str(folder) + "/plat.png"))
         self.img_plat_3.move(938, 265)
         self.label_ducat_3 = QLabel('X', self)
         self.label_ducat_3.move(968, 230)
@@ -232,10 +250,10 @@ class Fenetre(QtWidgets.QMainWindow):
 
         # Element 4
         self.img_ducat_4 = QLabel(self)
-        self.img_ducat_4.setPixmap(QtGui.QPixmap("ducat.png"))
+        self.img_ducat_4.setPixmap(QtGui.QPixmap(str(folder) + "/ducat.png"))
         self.img_ducat_4.move(1181, 230)
         self.img_plat_4 = QLabel(self)
-        self.img_plat_4.setPixmap(QtGui.QPixmap("plat.png"))
+        self.img_plat_4.setPixmap(QtGui.QPixmap(str(folder) + "/plat.png"))
         self.img_plat_4.move(1181, 265)
         self.label_ducat_4 = QLabel('X', self)
         self.label_ducat_4.move(1211, 230)
@@ -256,11 +274,14 @@ class Fenetre(QtWidgets.QMainWindow):
         self.label_plat_4.setText(str(data[3][0]))
 
 if __name__ == '__main__':
+    print(folder)
+    print(tessdata_path)
+    print(pytesseract.pytesseract.tesseract_cmd)
     get_serv_data()
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
-    app = QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(argv)
     app.setQuitOnLastWindowClosed(False)
     princ = Fenetre()
-    sys.exit(app.exec_())
+    exit(app.exec_())
 
