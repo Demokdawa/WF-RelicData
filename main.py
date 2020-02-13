@@ -71,6 +71,7 @@ def create_mask(theme, img):
 def relicarea_crop(upper_y, downer_y, left_x, right_x, img):
     # upperY:downerY, LeftX:RightX
     cropped = img[upper_y:downer_y, left_x:right_x]
+    cv2.imwrite('test.png', cropped)
     return cropped
     
 
@@ -90,22 +91,25 @@ def normalize_names(name):
     test3 = test2.title()
     return test3
 
-def data_pass_name(pos1, pos2, pos3, pos4, image):
+def data_pass_name(pos1, pos2, pos3, pos4):
     img_file = 'theme_source.png'
     image = cv2.imread(img_file)
     cropped_img = relicarea_crop(pos1, pos2, pos3, pos4, image)
     upscaled = cv2.resize(cropped_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     ret, imgtresh = cv2.threshold(create_mask('Virtuvian', upscaled), 218, 255, cv2.THRESH_BINARY_INV)
-    tessdata_dir_config = '--tessdata-dir "C:/Users/aprieto/Documents/GitHub/WF-RelicData/tessdata" -l Roboto --oem 1 --psm 6 get.images'
+    # tessdata_dir_config = '--tessdata-dir "C:/Users/aprieto/Documents/GitHub/WF-RelicData/tessdata" -l Roboto --oem 1 --psm 6 get.images'
+    tessdata_dir_config = '--tessdata-dir "C:/Users/Demokdawa/Documents/GitHub/WF-RelicData/tessdata" -l Roboto --oem 1 --psm 6 get.images'
     textocr = pytesseract.image_to_string(imgtresh, config=tessdata_dir_config)
+    print('ocr is : ' + textocr)
     return textocr
     
     
 def recognize():
-    opencvImage = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+    #opencvImage = pyautogui.screenshot('my_screenshot.png')
+    #opencvImage = cv2.cvtColor(np.array(pyautogui.screenshot('my_screenshot.png')), cv2.COLOR_RGB2BGR)
     rel_values = []
     for i in pos_list:
-        result = data_pass_name(i[1], i[3], i[0], i[2], opencvImage)
+        result = data_pass_name(i[1], i[3], i[0], i[2])
         plats, ducats = get_data_from_db(normalize_names(result))
         rel_values.append((plats, ducats, i[0], i[1]))
     return rel_values
@@ -129,14 +133,11 @@ def on_press(key):
 
 def execute_things():
     global busy
-    print('execute ' + busy)
     princ.hide()
     busy = False
-    print('triggered')
 
 def on_release(key):
     global busy
-    print('First ' + busy)
     # print('{0} released'.format(key))
     if busy is False and key == keyboard.Key.f12:
         busy = True
@@ -145,7 +146,7 @@ def on_release(key):
         timer = threading.Timer(5, execute_things)
         timer.start()
     if busy is True and key == keyboard.Key.f12:
-        print('false ' + busy)
+        pass
 
 
 class Fenetre(QtWidgets.QMainWindow):
