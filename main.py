@@ -37,9 +37,63 @@ file = os.path.join(str(folder), 'ref_fr.txt')
 
 busy = False
 
-pos_list = [(483, 411, 709, 458), (725, 411, 951, 458), (968, 411, 1193, 458), (1211, 411, 1436, 458)]*
+pos_list = [(483, 411, 709, 458), (725, 411, 951, 458), (968, 411, 1193, 458), (1211, 411, 1436, 458)] #RES-DEPENDANT
 
 ##############################################################################################################
+#UI-COLORS####################################################################################################
+
+# RGB Format
+ui_color_list = [
+    (189, 168, 101, 'Virtuvian'),   # Vitruvian
+    (150, 31, 35, 'Stalker'),       # Stalker 
+    (238, 193, 105, 'Baruk'),       # Baruk
+    (35, 200, 245, 'Corpus'),       # Corpus
+    (57, 105, 192, 'Fortuna'),      # Fortuna
+    (255, 189, 102, 'Grineer'),     # Grineer
+    (36, 184, 242, 'Lotus'),        # Lotus
+    (140, 38, 92, 'Nidus'),         # Nidus
+    (20, 41, 29, 'Orokin'),         # Orokin
+    (9, 78, 106, 'Tenno'),          # Tenno
+    (2, 127, 217, 'High contrast'), # High contrast
+    (255, 255, 255, 'Legacy'),      # Legacy
+    (158, 159, 167, 'Equinox')      # Equinox
+]
+
+# Check ui theme from screenshot (Image Format : OPENCV)
+def get_theme(image, color_treshold):
+    input_clr = image[86, 115] # Y,X  RES-DEPENDANT
+    for e in ui_color_list:
+        if abs(input_clr[2] - e[0]) < color_treshold and abs(input_clr[1] - e[1]) < color_treshold and abs(input_clr[0] - e[2]) < color_treshold:
+            return e[3]
+        else:
+            pass
+    
+##############################################################################################################
+#####TEST#####################################################################################################
+
+# Check ui theme from screenshot
+def check_pix(input_pix_clr, input_theme, color_treshold):
+    e = (189, 168, 101, 'Virtuvian')
+    if abs(input_pix_clr[2] - e[0]) < color_treshold and abs(input_pix_clr[1] - e[1]) < color_treshold and abs(input_pix_clr[0] - e[2]) < color_treshold:
+        return True
+    else:
+        return False
+            
+def tresh(image):
+    h = image.shape[0] # Hauteur
+    w = image.shape[1] # Largeur
+    for y in range(0, h):
+        for x in range(0, w):
+            pix_crl = image[y, x]
+            if check_pix(pix_crl, 'Stalker', 30) is True:
+                image[y, x] = 0
+            else:
+                image[y, x] = 255
+    
+    return image
+
+##############################################################################################################
+
 
 def parse_language():
     if language == 'FR':
@@ -114,7 +168,11 @@ def data_pass_name(pos1, pos2, pos3, pos4, image2):
     image = cv2.imread(img_file)
     cropped_img = relicarea_crop(pos1, pos2, pos3, pos4, image)
     upscaled = cv2.resize(cropped_img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-    ret, imgtresh = cv2.threshold(create_mask('Virtuvian', upscaled), 218, 255, cv2.THRESH_BINARY_INV)
+    # ret, imgtresh = cv2.threshold(create_mask('Virtuvian', upscaled), 218, 255, cv2.THRESH_BINARY_INV)
+    imgtresh_temp = tresh(upscaled)
+    kernel = np.ones((1, 1), np.uint8)
+    imgtresh = cv2.erode(imgtresh_temp, kernel, iterations=1)
+    
     tessdata_dir_config = '--tessdata-dir "' + tessdata_path + '" -l Roboto --oem 1 --psm 6'
     textocr = pytesseract.image_to_string(imgtresh, config=tessdata_dir_config)
     print('ocr is : ' + textocr)
@@ -142,7 +200,8 @@ def get_serv_data():
     response = stub.send_data(relic_pb2.Empty())
     serv_data = bytes(response.data)
     open('data.sqlite3', 'wb').write(serv_data)
-    
+ 
+#UI-Part################################################################################# 
     
 def on_press(key):
     try:
@@ -152,7 +211,7 @@ def on_press(key):
         # print('special key {0} pressed'.format(key))
         pass
 
-def execute_things():
+def hide_UI():
     global busy
     princ.hide()
     busy = False
@@ -164,7 +223,7 @@ def on_release(key):
         busy = True
         princ.update_vals(recognize())
         princ.show()
-        timer = threading.Timer(5, execute_things)
+        timer = threading.Timer(5, hide_UI)
         timer.start()
     if busy is True and key == keyboard.Key.f12:
         pass
@@ -276,6 +335,8 @@ class Fenetre(QtWidgets.QMainWindow):
         self.label_ducat_4.setText(str(data[3][1]))
         self.label_plat_4.setText(str(data[3][0]))
 
+######################################################################################### 
+
 if __name__ == '__main__':
     print(folder)
     print(tessdata_path)
@@ -289,3 +350,4 @@ if __name__ == '__main__':
     exit(app.exec_())
 
 # Relic rewards initialized
+# check for levenstein distance correct for triggering detection
