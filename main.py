@@ -19,6 +19,8 @@ import unidecode
 from random import randint
 from pathlib import Path
 
+#INIT&VARS####################################################################################################
+
 if getattr(sys, 'frozen', False):
     folder = Path(sys._MEIPASS)
 else:
@@ -31,11 +33,13 @@ tessdata_path = os.path.join(str(folder), 'tessdata')
 grpc_connect = '195.154.173.75:50051'
 
 language = 'FR'
-file = str(folder) + '/ref_fr.txt'
+file = os.path.join(str(folder), 'ref_fr.txt')
 
 busy = False
 
-pos_list = [(483, 411, 709, 458), (725, 411, 951, 458), (968, 411, 1193, 458), (1211, 411, 1436, 458)]
+pos_list = [(483, 411, 709, 458), (725, 411, 951, 458), (968, 411, 1193, 458), (1211, 411, 1436, 458)]*
+
+##############################################################################################################
 
 def parse_language():
     if language == 'FR':
@@ -106,7 +110,6 @@ def normalize_names(name):
         return translation_format
 
 def data_pass_name(pos1, pos2, pos3, pos4, image2):
-    rid = str(randint(100, 999))
     img_file = str(folder) + '/my_screenshot.png'
     image = cv2.imread(img_file)
     cropped_img = relicarea_crop(pos1, pos2, pos3, pos4, image)
@@ -285,3 +288,4 @@ if __name__ == '__main__':
     princ = Fenetre()
     exit(app.exec_())
 
+# Relic rewards initialized
